@@ -51,3 +51,17 @@ export const protect = asyncHandler(
     next();
   }
 );
+
+export const admin = (req: Request, res: Response, next: NextFunction) => {
+  // 1. Check req.user exists
+  if (!req.user) {
+    res.status(StatusCodes.UNAUTHORIZED);
+    throw new Error("Not authorized, no user found");
+  }
+  if (!req.user.isAdmin) {
+    res.status(StatusCodes.FORBIDDEN);
+    throw new Error("Not authorized as admin");
+  } else {
+    next();
+  }
+};
