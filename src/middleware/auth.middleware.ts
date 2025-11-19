@@ -28,7 +28,8 @@ export const protect = asyncHandler(
       where: { id: decoded.id },
       select: {
         id: true,
-        name: true,
+        username: true,
+        fullName: true,
         email: true,
         profilePicture: true,
         isAdmin: true,
@@ -40,7 +41,13 @@ export const protect = asyncHandler(
       throw new Error("Not authorized, user not found");
     }
 
-    req.user = user;
+    req.user = req.user = {
+      id: user.id,
+      name: user.fullName || user.username || "User", // Prefer fullName, fallback to username
+      email: user.email,
+      profilePicture: user.profilePicture,
+      isAdmin: user.isAdmin,
+    };
     next();
   }
 );

@@ -2,7 +2,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: {
-        id: string;
+        id: number;
         name: string;
         email: string;
         profilePicture: string | null;
