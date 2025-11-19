@@ -1,8 +1,9 @@
-import express, { Application, Request, Response } from "express";
+import express, { Application, Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 // import { errorHandler } from "./middleware/error.middleware";
 import prisma from "./config/db";
+import { errorHandler } from "./middleware/error.middleware";
 
 // Load environment variables
 dotenv.config();
@@ -24,11 +25,18 @@ app.get("/", (_req: Request, res: Response) => {
   });
 });
 
+// 404 handler for unmatched routes
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({
+    message: "Route not found",
+  });
+});
+
 // Error Handler Middleware (must be last)
-// app.use(errorHandler);
+app.use(errorHandler);
 
 // Port configuration
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Start server
 const startServer = async () => {
