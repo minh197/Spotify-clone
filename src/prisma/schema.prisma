@@ -1,0 +1,237 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  username       String?   @unique
+  password       String
+  phoneNumber    String?   @map("phone_number")
+  address        String?
+  fullName       String?   @map("full_name")
+  email          String    @unique
+  profilePicture String?   @map("profile_picture")
+  isAdmin        Boolean   @default(false) @map("is_admin")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  likedAlbums            UsersAlbums[]
+  followedArtists        UsersArtists[]
+  likedSongs             UsersLikedSongs[]
+  followedPlaylists      UsersFollowPlaylist[]
+  createdPlaylists       Playlist[]
+  collaboratingPlaylists UsersCollaboratePlaylist[]
+
+  @@map("users")
+}
+
+model Song {
+  id         Int      @id @default(autoincrement())
+  title      String
+  artistId   Int      @map("artist_id")
+  albumId    Int?     @map("album_id")
+  duration   Int      // in seconds
+  genre      String?
+  playCount  Int      @default(0) @map("play_count")
+  likeCount  Int      @default(0) @map("like_count")
+  lyric      String?  @db.Text
+  isExplicit Boolean  @default(false) @map("is_explicit")
+  audioUrl   String   @map("audio_url")
+  coverImage String?  @map("cover_image")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  artist          Artist              @relation("SongArtist", fields: [artistId], references: [id], onDelete: Cascade)
+  album           Album?              @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  featuredArtists ArtistsSongs[]
+  likedByUsers    UsersLikedSongs[]
+  playlists       SongsPlaylists[]
+
+  @@map("songs")
+}
+
+model Artist {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  dob                DateTime? @db.Date
+  verificationStatus Boolean  @default(false) @map("verification_status")
+  followerCount      Int      @default(0) @map("follower_count")
+  bio                String?  @db.Text
+  image              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  songs           Song[]         @relation("SongArtist")
+  albums          Album[]
+  featuredInSongs ArtistsSongs[]
+  followedByUsers UsersArtists[]
+
+  @@map("artists")
+}
+
+model Album {
+  id          Int       @id @default(autoincrement())
+  title       String
+  coverImage  String?   @map("cover_image")
+  releaseDate DateTime? @db.Date @map("release_date")
+  genre       String?
+  description String?   @db.Text
+  trackLike   Int       @default(0) @map("track_like")
+  artistId    Int       @map("artist_id")
+  isExplicit  Boolean   @default(false) @map("is_explicit")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  artist       Artist        @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  songs        Song[]
+  likedByUsers UsersAlbums[]
+
+  @@map("albums")
+}
+
+model Playlist {
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String?  @db.Text
+  isPublic      Boolean  @default(true) @map("is_public")
+  coverImage    String?  @map("cover_image")
+  followerCount Int      @default(0) @map("follower_count")
+  creatorId     Int      @map("creator_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator        User                       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  songs          SongsPlaylists[]
+  followers      UsersFollowPlaylist[]
+  collaborators  UsersCollaboratePlaylist[]
+
+  @@map("playlists")
+}
+
+model MediaUpload {
+  id        Int      @id @default(autoincrement())
+  title     String
+  size      String
+  type      String
+  url       String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("media_upload")
+}
+
+// Junction Tables
+
+model UsersAlbums {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  albumId   Int      @map("album_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, albumId])
+  @@map("users_albums")
+}
+
+model UsersArtists {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  artistId  Int      @map("artist_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, artistId])
+  @@map("users_artists")
+}
+
+model UsersLikedSongs {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  songId    Int      @map("song_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, songId])
+  @@map("users_liked_songs")
+}
+
+model UsersFollowPlaylist {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  playlistId Int      @map("playlist_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, playlistId])
+  @@map("users_follow_playlist")
+}
+
+model UsersCollaboratePlaylist {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  playlistId Int      @map("playlist_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, playlistId])
+  @@map("users_collaborate_playlist")
+}
+
+model ArtistsSongs {
+  id        Int      @id @default(autoincrement())
+  artistId  Int      @map("artist_id")
+  songId    Int      @map("song_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  song   Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([artistId, songId])
+  @@map("artists_songs")
+}
+
+model SongsPlaylists {
+  id         Int      @id @default(autoincrement())
+  songId     Int      @map("song_id")
+  playlistId Int      @map("playlist_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([songId, playlistId])
+  @@map("songs_playlists")
+}
