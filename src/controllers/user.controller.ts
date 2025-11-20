@@ -4,7 +4,6 @@ import { StatusCodes } from "http-status-codes";
 import prisma from "../config/db";
 import { generateToken } from "../config/jwt";
 import bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
 
 interface RegisterBody {
   email: string;
@@ -131,16 +130,27 @@ export const loginUser = asyncHandler(
 // @access  Private
 export const getUserProfile = asyncHandler(
   async (req: Request, res: Response) => {
-    // req.user is populated by protect middleware
-    // and typed via your express.d.ts augmentation
+    if (!req.user) {
+      res.status(StatusCodes.UNAUTHORIZED);
+      throw new Error("Not authorized");
+    }
+    const existingUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+    if (!existingUser) {
+      res.status(StatusCodes.NOT_FOUND);
+      throw new Error("There is no user with this id");
+    }
+    const { id, email, username, fullName, profilePicture, isAdmin } =
+      existingUser;
 
-    // TODO:
-    // 1. Use req.user.id to fetch full user from prisma
-    //    (including relations later if you want)
-    // 2. Return sanitized profile
-
-    res.status(StatusCodes.NOT_IMPLEMENTED).json({
-      message: "getUserProfile not implemented yet",
+    res.json({
+      id,
+      email,
+      username,
+      fullName,
+      profilePicture,
+      isAdmin,
     });
   }
 );
