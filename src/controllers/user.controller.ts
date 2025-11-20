@@ -4,6 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import prisma from "../config/db";
 import { generateToken } from "../config/jwt";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 interface RegisterBody {
   email: string;
@@ -31,6 +32,16 @@ function validateBody(req: Request, res: Response) {
   if (!email.includes("@")) {
     res.status(StatusCodes.BAD_REQUEST);
     throw new Error("Invalid email format");
+  }
+  return;
+}
+
+function validateUserLoginBody(req: Request, res: Response) {
+  const { email, password } = req.body;
+
+  if (!email || email.trim() === "" || !password || password.trim() === "") {
+    res.status(StatusCodes.BAD_REQUEST);
+    throw new Error("Email and password are required");
   }
   return;
 }
@@ -86,14 +97,32 @@ export const registerUser = asyncHandler(
 export const loginUser = asyncHandler(
   async (req: Request<{}, {}, LoginBody>, res: Response) => {
     // TODO:
-    // 1. Find user by email
-    // 2. Compare password with bcrypt
-    // 3. If match, generate token
-    // 4. Return basic user info + token
+    validateUserLoginBody(req, res);
 
-    res.status(StatusCodes.NOT_IMPLEMENTED).json({
-      message: "loginUser not implemented yet",
-    });
+    const { email, password } = req.body;
+    // 1. Find user by email
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (!existingUser) {
+      res.status(StatusCodes.UNAUTHORIZED);
+      throw new Error("Invalid email or password");
+    }
+    // 2. Compare password with bcrypt
+    const isMatch = await bcrypt.compare(password, existingUser.password);
+
+    if (isMatch) {
+      const token = generateToken(existingUser.id);
+      res.status(StatusCodes.OK).json({
+        id: existingUser.id,
+        fullname: existingUser.fullName,
+        isAdmin: existingUser.isAdmin,
+        email: existingUser.email,
+        username: existingUser.username,
+        token,
+      });
+    } else {
+      res.status(StatusCodes.UNAUTHORIZED);
+      throw new Error("Invalid email or password");
+    }
   }
 );
 
