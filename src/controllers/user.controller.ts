@@ -10,6 +10,8 @@ interface RegisterBody {
   password: string;
   username?: string;
   fullName?: string;
+  isAdmin?: boolean;
+  address?: string;
 }
 
 interface LoginBody {
@@ -54,7 +56,7 @@ export const registerUser = asyncHandler(
     // 1. Validate body (email, password, etc.)
     validateBody(req, res);
 
-    const { email, password, username, fullName } = req.body;
+    const { email, password, username, fullName, isAdmin, address } = req.body;
 
     // 2. Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -72,7 +74,8 @@ export const registerUser = asyncHandler(
         password: hashedPassword,
         username, // optional
         fullName, // optional
-        // any other fields you want to initialize (e.g. address: null)
+        isAdmin: isAdmin ?? false, // optional, defaults to false if not provided
+        address, // optional
       },
     });
 
@@ -224,9 +227,27 @@ export const updateUserProfile = asyncHandler(
 // @desc    Get all users (admin)
 // @route   GET /api/users
 // @access  Private/Admin
-export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
-  // TODO:
-  // 1. prisma.user.findMany(...)
-  // 2. Select safe fields only (no password)
-  // 3. Return list
-});
+export const getAllUsers = asyncHandler(
+  async (_req: Request, res: Response) => {
+    // TODO:
+    // 1. prisma.user.findMany(...)
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        phoneNumber: true,
+        address: true,
+        profilePicture: true,
+        isAdmin: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    res.status(StatusCodes.OK).json({
+      count: users.length,
+      users,
+    });
+  }
+);

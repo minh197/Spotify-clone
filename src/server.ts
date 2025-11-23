@@ -1,9 +1,10 @@
-import express, { Application, Request, Response, NextFunction } from "express";
+import express, { Application, Request, Response } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 // import { errorHandler } from "./middleware/error.middleware";
 import prisma from "./config/db";
 import { errorHandler } from "./middleware/error.middleware";
+import userRoutes from "./routes/user.routes";
 
 // Load environment variables
 dotenv.config();
@@ -24,6 +25,9 @@ app.get("/", (_req: Request, res: Response) => {
     status: "Running",
   });
 });
+
+// API Routes
+app.use("/api/users", userRoutes);
 
 // 404 handler for unmatched routes
 app.use((_req: Request, res: Response) => {
