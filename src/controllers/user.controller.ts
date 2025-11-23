@@ -162,13 +162,61 @@ export const updateUserProfile = asyncHandler(
   async (req: Request, res: Response) => {
     // TODO:
     // 1. Use req.user.id
+    if (!req.user?.id) {
+      res.status(StatusCodes.UNAUTHORIZED);
+      throw new Error("User not authenticated");
+    }
+
     // 2. Read fields from req.body (fullName, username, address, etc.)
+    const { fullName, username, address, phoneNumber, password } = req.body;
     // 3. Optionally handle profilePicture later (Cloudinary)
     // 4. prisma.user.update(...)
+    const updateData: Partial<{
+      fullName: string;
+      username: string;
+      address: string;
+      phoneNumber: string;
+      password: string;
+      profilePicture: string;
+    }> = {};
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (username !== undefined) updateData.username = username;
+    if (address !== undefined) updateData.address = address;
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+
+    if (Object.keys(updateData).length === 0) {
+      res.status(StatusCodes.BAD_REQUEST);
+      throw new Error("No fields provided to update");
+    }
+
     // 5. Return updated user (sanitized)
 
-    res.status(StatusCodes.NOT_IMPLEMENTED).json({
-      message: "updateUserProfile not implemented yet",
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        email: true,
+        phoneNumber: true,
+        address: true,
+        profilePicture: true,
+        isAdmin: true,
+        createdAt: true,
+        updatedAt: true,
+        // Explicitly exclude password
+      },
+    });
+    res.status(StatusCodes.OK).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
     });
   }
 );
@@ -181,8 +229,4 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   // 1. prisma.user.findMany(...)
   // 2. Select safe fields only (no password)
   // 3. Return list
-
-  res.status(StatusCodes.NOT_IMPLEMENTED).json({
-    message: "getAllUsers not implemented yet",
-  });
 });
