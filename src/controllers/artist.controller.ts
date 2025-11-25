@@ -348,3 +348,37 @@ export const updateArtistInfo = asyncHandler(
     });
   }
 );
+// @desc    Delete an artist by ID (Admin only). Cascades to delete all associated songs. Returns 404 if artist not found, 400 for invalid ID.
+// @route   DELETE /api/artists/:id
+// @access  Private/Admin
+export const deleteArtist = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user?.isAdmin) {
+      res.status(StatusCodes.FORBIDDEN);
+      throw new Error("Not authorized as admin");
+    }
+
+    const rawId = req.params.id;
+    const id = parseInt(rawId, 10);
+
+    if (isNaN(id) || id <= 0) {
+      res.status(StatusCodes.BAD_REQUEST);
+      throw new Error("Invalid artist ID");
+    }
+
+    const existingArtist = await prisma.artist.findUnique({
+      where: { id },
+    });
+
+    if (!existingArtist) {
+      res.status(StatusCodes.NOT_FOUND);
+      throw new Error("Artist not found");
+    }
+
+    await prisma.artist.delete({ where: { id } });
+
+    res.status(StatusCodes.OK).json({
+      message: "Artist deleted successfully",
+    });
+  }
+);
