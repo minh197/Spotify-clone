@@ -219,12 +219,16 @@ export const createArtist = asyncHandler(
           folder: "spotify-clone/artists",
           resource_type: "image",
         });
-      } catch (error) {
+      } catch (error: any) {
+        // Clean up temp file if it still exists
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
         res.status(StatusCodes.INTERNAL_SERVER_ERROR);
-        throw new Error("Failed to upload image to Cloudinary");
+        // Preserve the detailed error message from Cloudinary
+        throw new Error(
+          error?.message || "Failed to upload image to Cloudinary"
+        );
       }
     }
 
@@ -329,12 +333,16 @@ export const updateArtistInfo = asyncHandler(
           resource_type: "image",
         });
         data.image = imageUrl;
-      } catch (error) {
+      } catch (error: any) {
+        // Clean up temp file if it still exists
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
         res.status(StatusCodes.INTERNAL_SERVER_ERROR);
-        throw new Error("Failed to upload image to Cloudinary");
+        // Preserve the detailed error message from Cloudinary
+        throw new Error(
+          error?.message || "Failed to upload image to Cloudinary"
+        );
       }
     }
 
