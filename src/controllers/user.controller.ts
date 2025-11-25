@@ -47,41 +47,35 @@ function validateUserLoginBody(req: Request, res: Response) {
   return;
 }
 
-// @desc    Register new user
+// @desc    Register a new user. Requires email (min 6 chars, must contain @) and password. Optional fields: username, fullName, address, isAdmin (defaults to false). Returns user info and JWT token.
 // @route   POST /api/users/register
 // @access  Public
 export const registerUser = asyncHandler(
   async (req: Request<{}, {}, RegisterBody>, res: Response) => {
-    // TODO:
-    // 1. Validate body (email, password, etc.)
     validateBody(req, res);
 
     const { email, password, username, fullName, isAdmin, address } = req.body;
 
-    // 2. Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
       res.status(StatusCodes.BAD_REQUEST);
       throw new Error("User with this email already exists");
     }
-    // 3. Hash password (bcrypt)
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    // 4. Create user with prisma.user.create
     const user = await prisma.user.create({
       data: {
-        email, // from req.body
+        email,
         password: hashedPassword,
-        username, // optional
-        fullName, // optional
-        isAdmin: isAdmin ?? false, // optional, defaults to false if not provided
-        address, // optional
+        username,
+        fullName,
+        isAdmin: isAdmin ?? false,
+        address,
       },
     });
 
-    // 5. Generate JWT with generateToken(user.id)
     const token = generateToken(user.id);
-    // 6. Return basic user info + token
     res.status(StatusCodes.CREATED).json({
       id: user.id,
       email: user.email,
@@ -93,22 +87,20 @@ export const registerUser = asyncHandler(
   }
 );
 
-// @desc    Login user
+// @desc    Login user with email and password. Returns user info and JWT token on success. Returns 401 for invalid credentials.
 // @route   POST /api/users/login
 // @access  Public
 export const loginUser = asyncHandler(
   async (req: Request<{}, {}, LoginBody>, res: Response) => {
-    // TODO:
     validateUserLoginBody(req, res);
 
     const { email, password } = req.body;
-    // 1. Find user by email
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (!existingUser) {
       res.status(StatusCodes.UNAUTHORIZED);
       throw new Error("Invalid email or password");
     }
-    // 2. Compare password with bcrypt
+
     const isMatch = await bcrypt.compare(password, existingUser.password);
 
     if (isMatch) {
@@ -128,7 +120,7 @@ export const loginUser = asyncHandler(
   }
 );
 
-// @desc    Get current user's profile
+// @desc    Get current authenticated user's profile. Returns user info excluding password. Returns 404 if user not found.
 // @route   GET /api/users/profile
 // @access  Private
 export const getUserProfile = asyncHandler(
@@ -158,22 +150,17 @@ export const getUserProfile = asyncHandler(
   }
 );
 
-// @desc    Update current user's profile
+// @desc    Update current authenticated user's profile. Supports partial updates for: fullName, username, address, phoneNumber, password (hashed automatically). Returns updated user info excluding password.
 // @route   PUT /api/users/profile
 // @access  Private
 export const updateUserProfile = asyncHandler(
   async (req: Request, res: Response) => {
-    // TODO:
-    // 1. Use req.user.id
     if (!req.user?.id) {
       res.status(StatusCodes.UNAUTHORIZED);
       throw new Error("User not authenticated");
     }
 
-    // 2. Read fields from req.body (fullName, username, address, etc.)
     const { fullName, username, address, phoneNumber, password } = req.body;
-    // 3. Optionally handle profilePicture later (Cloudinary)
-    // 4. prisma.user.update(...)
     const updateData: Partial<{
       fullName: string;
       username: string;
@@ -198,8 +185,6 @@ export const updateUserProfile = asyncHandler(
       throw new Error("No fields provided to update");
     }
 
-    // 5. Return updated user (sanitized)
-
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
       data: updateData,
@@ -214,7 +199,6 @@ export const updateUserProfile = asyncHandler(
         isAdmin: true,
         createdAt: true,
         updatedAt: true,
-        // Explicitly exclude password
       },
     });
     res.status(StatusCodes.OK).json({
@@ -224,13 +208,11 @@ export const updateUserProfile = asyncHandler(
   }
 );
 
-// @desc    Get all users (admin)
+// @desc    Get all users (Admin only). Returns list of all users with their info excluding passwords. Includes user count.
 // @route   GET /api/users
 // @access  Private/Admin
 export const getAllUsers = asyncHandler(
   async (_req: Request, res: Response) => {
-    // TODO:
-    // 1. prisma.user.findMany(...)
     const users = await prisma.user.findMany({
       select: {
         id: true,
