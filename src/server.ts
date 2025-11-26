@@ -6,6 +6,7 @@ import prisma from "./config/db";
 import { errorHandler } from "./middleware/error.middleware";
 import userRoutes from "./routes/user.routes";
 import artistRoutes from "./routes/artist.route";
+import songRoutes from "./routes/song.route";
 
 // Load environment variables
 dotenv.config();
@@ -30,6 +31,7 @@ app.get("/", (_req: Request, res: Response) => {
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/artists", artistRoutes);
+app.use("/api/songs", songRoutes);
 
 // 404 handler for unmatched routes
 app.use((_req: Request, res: Response) => {
