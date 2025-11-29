@@ -191,6 +191,14 @@ export const createNewAlbum = asyncHandler(
       throw new Error("Title is required and must be a non-empty string");
     }
 
+    const trimmedTitle = title.trim();
+    // Remove surrounding quotes if present (handles "\"text\"" cases)
+    const cleanedTitle = trimmedTitle.replace(/^["']|["']$/g, "");
+    if (cleanedTitle === "") {
+      res.status(StatusCodes.BAD_REQUEST);
+      throw new Error("Title cannot be empty or just quotes");
+    }
+
     // Validate required artistId
     if (!artistId) {
       res.status(StatusCodes.BAD_REQUEST);
@@ -284,7 +292,7 @@ export const createNewAlbum = asyncHandler(
     }
     const album = await prisma.album.create({
       data: {
-        title: title.trim(),
+        title: cleanedTitle,
         artistId: parsedArtistId,
         releaseDate: parsedReleaseDate,
         genre: parsedGenre,
@@ -366,7 +374,14 @@ export const updateAlbumInfo = asyncHandler(
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error("Title must be a non-empty string");
       }
-      data.title = title.trim();
+      const trimmedTitle = title.trim();
+      // Remove surrounding quotes if present (handles "\"text\"" cases)
+      const cleanedTitle = trimmedTitle.replace(/^["']|["']$/g, "");
+      if (cleanedTitle === "") {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error("Title cannot be empty or just quotes");
+      }
+      data.title = cleanedTitle;
     }
 
     // Validate artistId (optional update)
@@ -464,6 +479,20 @@ export const updateAlbumInfo = asyncHandler(
     const updatedAlbum = await prisma.album.update({
       where: { id: albumId },
       data,
+      include: {
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+        _count: {
+          select: {
+            songs: true,
+          },
+        },
+      },
     });
 
     res.status(StatusCodes.OK).json({

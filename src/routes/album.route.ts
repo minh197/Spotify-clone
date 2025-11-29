@@ -21,10 +21,15 @@ router.get("/:id", getAlbumById);
 
 // Admin routes (require authentication + admin role)
 router.post("/", protect, admin, upload.single("coverImage"), createNewAlbum);
-router.put("/:id", protect, admin, upload.single("coverImage"), updateAlbumInfo);
+router.put(
+  "/:id",
+  protect,
+  admin,
+  upload.single("coverImage"),
+  updateAlbumInfo
+);
 router.delete("/:id", protect, admin, deleteAlbumById);
 router.put("/:id/add-songs", protect, admin, addSongsToalbum);
 router.put("/:id/remove-song/:songId", protect, admin, removeSongFromAlbum);
 
 export default router;
-
