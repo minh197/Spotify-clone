@@ -478,7 +478,7 @@ GET /api/playlists
 GET /api/playlists?search=my playlist
 ```
 
-### Get Featured Playlists
+### Get Featured Playlists (? not sure how to implement since we don't have isFeatured property in the schema)
 
 ```http
 GET /api/playlists/featured

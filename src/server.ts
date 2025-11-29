@@ -8,6 +8,7 @@ import userRoutes from "./routes/user.routes";
 import artistRoutes from "./routes/artist.route";
 import songRoutes from "./routes/song.route";
 import albumRoutes from "./routes/album.route";
+import playlistRoutes from "./routes/playlist.route";
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +35,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/artists", artistRoutes);
 app.use("/api/songs", songRoutes);
 app.use("/api/albums", albumRoutes);
+app.use("/api/playlists", playlistRoutes);
 
 // 404 handler for unmatched routes
 app.use((_req: Request, res: Response) => {
