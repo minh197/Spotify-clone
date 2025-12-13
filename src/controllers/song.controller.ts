@@ -69,6 +69,7 @@ export const getAllSongs = asyncHandler(async (req: Request, res: Response) => {
 // @access  Public
 
 export const getTopSongs = asyncHandler(async (req: Request, res: Response) => {
+  // **REVIEW: nên dùng DTO
   const rawLimit = req.query.limit;
   let limit = DEFAULT_LIMIT;
 
@@ -78,6 +79,7 @@ export const getTopSongs = asyncHandler(async (req: Request, res: Response) => {
       limit = Math.min(parsedLimit, MAX_LIMIT);
     }
   }
+  // *END_REVIEW
   const songs = await prisma.song.findMany({
     take: limit,
     orderBy: {
@@ -204,10 +206,12 @@ export const getSongById = asyncHandler(async (req: Request, res: Response) => {
 
 export const createNewSong = asyncHandler(
   async (req: Request, res: Response) => {
+    // **REVIEW: nên remove
     if (!req.user?.isAdmin) {
       res.status(StatusCodes.FORBIDDEN);
       throw new Error("Not authorized as admin");
     }
+    // **END
     const {
       artistId,
       title,
@@ -220,6 +224,7 @@ export const createNewSong = asyncHandler(
       isExplicit,
     } = req.body;
 
+    // **REVIEW: nên dùng DTO
     if (!title || typeof title !== "string" || title.trim() === "") {
       res.status(StatusCodes.BAD_REQUEST);
       throw new Error("Title is required and must be a non-empty string");
@@ -355,6 +360,8 @@ export const createNewSong = asyncHandler(
         throw new Error("Album does not belong to the specified artist");
       }
     }
+    // **END
+    //Upload file here
 
     const song = await prisma.song.create({
       data: {

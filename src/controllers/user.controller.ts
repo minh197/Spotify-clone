@@ -52,9 +52,11 @@ function validateUserLoginBody(req: Request, res: Response) {
 // @access  Public
 export const registerUser = asyncHandler(
   async (req: Request<{}, {}, RegisterBody>, res: Response) => {
+    // **REVIEW: nên sử dụng DTO
     validateBody(req, res);
-
+    
     const { email, password, username, fullName, isAdmin, address } = req.body;
+    // **END_REVIEW
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
@@ -76,6 +78,7 @@ export const registerUser = asyncHandler(
     });
 
     const token = generateToken(user.id);
+    // **REVIEW: không response id thật của user
     res.status(StatusCodes.CREATED).json({
       id: user.id,
       email: user.email,
@@ -84,6 +87,7 @@ export const registerUser = asyncHandler(
       isAdmin: user.isAdmin,
       token,
     });
+    // **END_REVIEW
   }
 );
 
@@ -92,9 +96,11 @@ export const registerUser = asyncHandler(
 // @access  Public
 export const loginUser = asyncHandler(
   async (req: Request<{}, {}, LoginBody>, res: Response) => {
+    // **REVIEW: nên sử dụng DTO
     validateUserLoginBody(req, res);
 
     const { email, password } = req.body;
+    // **END_REVIEW
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (!existingUser) {
       res.status(StatusCodes.UNAUTHORIZED);
@@ -125,6 +131,7 @@ export const loginUser = asyncHandler(
 // @access  Private
 export const getUserProfile = asyncHandler(
   async (req: Request, res: Response) => {
+    // **REVIEW: nên xoá
     if (!req.user) {
       res.status(StatusCodes.UNAUTHORIZED);
       throw new Error("Not authorized");
@@ -138,15 +145,18 @@ export const getUserProfile = asyncHandler(
     }
     const { id, email, username, fullName, profilePicture, isAdmin } =
       existingUser;
+    // **END
 
+    // **REVIEW: tái sử dụng request.user
     res.json({
-      id,
-      email,
-      username,
-      fullName,
-      profilePicture,
-      isAdmin,
+      id: req.user.id,
+      email: req.user.email,
+      username: req.user.username,
+      fullName: req.user.fullName,
+      profilePicture: req.user.profilePicture,
+      isAdmin: req.user.isAdmin,
     });
+    // **END
   }
 );
 
@@ -155,10 +165,12 @@ export const getUserProfile = asyncHandler(
 // @access  Private
 export const updateUserProfile = asyncHandler(
   async (req: Request, res: Response) => {
+    // **REVIEW: nên xoá
     if (!req.user?.id) {
       res.status(StatusCodes.UNAUTHORIZED);
       throw new Error("User not authenticated");
     }
+    // **END_REVIEW
 
     const { fullName, username, address, phoneNumber, password } = req.body;
     const updateData: Partial<{
@@ -212,6 +224,9 @@ export const updateUserProfile = asyncHandler(
 // @route   GET /api/users
 // @access  Private/Admin
 export const getAllUsers = asyncHandler(
+  // **REVIEW: thử pagination
+  // limit: 10
+  // page: 3
   async (_req: Request, res: Response) => {
     const users = await prisma.user.findMany({
       select: {
@@ -226,7 +241,15 @@ export const getAllUsers = asyncHandler(
         createdAt: true,
         updatedAt: true,
       },
+      limit: 10,
+      skip: limit * (page - 1),
+      orderBy: {
+        createdAt: "desc",
+      },
     });
+    // data : [{user}]
+    // metadata: {total: 1000, limit: 10, page: 2}
+
     res.status(StatusCodes.OK).json({
       count: users.length,
       users,

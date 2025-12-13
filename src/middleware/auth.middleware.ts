@@ -23,6 +23,7 @@ export const protect = asyncHandler(
       res.status(StatusCodes.UNAUTHORIZED);
       throw new Error("Not authorized, token failed");
     }
+    
     //get user from database
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
