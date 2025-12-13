@@ -5,21 +5,21 @@ import prisma from "../config/db";
 import { Prisma } from "@prisma/client";
 import { uploadToCloudinary } from "../config/cloudinary";
 import fs from "fs";
+import { validateSearch, validateId } from "../dto/query.dto";
 
 // @desc    Get all public playlist with an optional search
 // @route   GET /api/playlists
 // @access  Public
 export const getAllPublicPlaylists = asyncHandler(
   async (req: Request, res: Response) => {
-    const search = req.query.search;
+    const search = validateSearch(req.query.search as string | undefined);
 
     const where: Prisma.PlaylistWhereInput = {
       isPublic: true,
     };
 
-    if (search && typeof search === "string" && search.trim() !== "") {
-      const searchTerm = search.trim();
-      where.name = { contains: searchTerm };
+    if (search) {
+      where.name = { contains: search };
     }
     const playlists = await prisma.playlist.findMany({
       where,
@@ -36,13 +36,7 @@ export const getAllPublicPlaylists = asyncHandler(
 
 export const getPlaylistById = asyncHandler(
   async (req: Request, res: Response) => {
-    const rawId = req.params.id;
-    const parsedId = parseInt(rawId, 10);
-
-    if (isNaN(parsedId) || parsedId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid playlist id");
-    }
+    const parsedId = validateId(req.params.id, "playlist id");
     const existingPlaylist = await prisma.playlist.findUnique({
       where: { id: parsedId },
       include: {
@@ -108,15 +102,15 @@ export const getMyPlaylist = asyncHandler(
     }
 
     const userId = req.user.id;
-    const search = req.query.search;
+    const search = validateSearch(req.query.search as string | undefined);
 
     const where: Prisma.PlaylistWhereInput = {
       creatorId: userId,
     };
 
     // Optional search filter
-    if (search && typeof search === "string" && search.trim() !== "") {
-      where.name = { contains: search.trim(), mode: "insensitive" };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
     }
 
     const playlists = await prisma.playlist.findMany({
@@ -271,13 +265,7 @@ export const updatePlaylist = asyncHandler(
     }
 
     const userId = req.user.id;
-    const rawId = req.params.id;
-    const parsedId = parseInt(rawId, 10);
-
-    if (isNaN(parsedId) || parsedId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid playlist id");
-    }
+    const parsedId = validateId(req.params.id, "playlist id");
 
     const existingPlaylist = await prisma.playlist.findUnique({
       where: { id: parsedId },
@@ -409,13 +397,7 @@ export const deletePlaylist = asyncHandler(
     }
 
     const userId = req.user.id;
-    const rawId = req.params.id;
-    const parsedId = parseInt(rawId, 10);
-
-    if (isNaN(parsedId) || parsedId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid playlist id");
-    }
+    const parsedId = validateId(req.params.id, "playlist id");
 
     const existingPlaylist = await prisma.playlist.findUnique({
       where: { id: parsedId },
@@ -451,8 +433,7 @@ export const addSongsToPlaylist = asyncHandler(
     }
 
     const userId = req.user.id;
-    const rawId = req.params.id;
-    const parsedId = parseInt(rawId, 10);
+    const parsedId = validateId(req.params.id, "playlist id");
 
     if (isNaN(parsedId) || parsedId <= 0) {
       res.status(StatusCodes.BAD_REQUEST);
@@ -599,20 +580,8 @@ export const removeSongFromPlaylist = asyncHandler(
     }
 
     const userId = req.user.id;
-    const rawPlaylistId = req.params.id;
-    const rawSongId = req.params.songId;
-    const parsedPlaylistId = parseInt(rawPlaylistId, 10);
-    const parsedSongId = parseInt(rawSongId, 10);
-
-    if (isNaN(parsedPlaylistId) || parsedPlaylistId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid playlist id");
-    }
-
-    if (isNaN(parsedSongId) || parsedSongId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid song id");
-    }
+    const parsedPlaylistId = validateId(req.params.id, "playlist id");
+    const parsedSongId = validateId(req.params.songId, "song id");
 
     const existingPlaylist = await prisma.playlist.findUnique({
       where: { id: parsedPlaylistId },
@@ -738,13 +707,7 @@ export const followPlaylist = asyncHandler(
     }
 
     const userId = req.user.id;
-    const rawId = req.params.id;
-    const parsedId = parseInt(rawId, 10);
-
-    if (isNaN(parsedId) || parsedId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid playlist id");
-    }
+    const parsedId = validateId(req.params.id, "playlist id");
 
     const existingPlaylist = await prisma.playlist.findUnique({
       where: { id: parsedId },
@@ -826,13 +789,7 @@ export const unfollowPlaylist = asyncHandler(
     }
 
     const userId = req.user.id;
-    const rawId = req.params.id;
-    const parsedId = parseInt(rawId, 10);
-
-    if (isNaN(parsedId) || parsedId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid playlist id");
-    }
+    const parsedId = validateId(req.params.id, "playlist id");
 
     const existingPlaylist = await prisma.playlist.findUnique({
       where: { id: parsedId },

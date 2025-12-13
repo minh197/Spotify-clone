@@ -5,29 +5,34 @@ import prisma from "../config/db";
 import { Prisma } from "@prisma/client";
 import { uploadToCloudinary } from "../config/cloudinary";
 import fs from "fs";
-
-// Constants for pagination limits
-const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 100;
+import {
+  validateLimit,
+  validateSearch,
+  validateVerified,
+  validateId,
+} from "../dto/query.dto";
+import {
+  validateCreateArtist,
+  validateUpdateArtist,
+} from "../dto/artist.dto";
 
 // @desc    Get all artists with optional search and filter by verification status. Returns artists ordered by follower count with song and album counts.
 // @route   GET /api/artists
 // @access  Public
 export const getAllArtists = asyncHandler(
   async (req: Request, res: Response) => {
-    const search = req.query.search;
-    const verified = req.query.verified;
+    const search = validateSearch(req.query.search as string | undefined);
+    const verified = validateVerified(req.query.verified as string | undefined);
 
     const where: Prisma.ArtistWhereInput = {};
 
-    if (search && typeof search === "string" && search.trim() !== "") {
+    if (search) {
       where.name = { contains: search, mode: "insensitive" };
     }
 
-    if (verified === "true") {
-      where.verificationStatus = true;
+    if (verified !== undefined) {
+      where.verificationStatus = verified;
     }
-    if (verified === "false") where.verificationStatus = false;
 
     const artists = await prisma.artist.findMany({
       where,
@@ -55,15 +60,7 @@ export const getAllArtists = asyncHandler(
 // @access  Public
 export const getTopArtists = asyncHandler(
   async (req: Request, res: Response) => {
-    const rawLimit = req.query.limit;
-    let limit = DEFAULT_LIMIT;
-
-    if (rawLimit && typeof rawLimit === "string") {
-      const parsedLimit = parseInt(rawLimit, 10);
-      if (!isNaN(parsedLimit) && parsedLimit > 0) {
-        limit = Math.min(parsedLimit, MAX_LIMIT);
-      }
-    }
+    const limit = validateLimit(req.query.limit as string | undefined);
 
     const artists = await prisma.artist.findMany({
       take: limit,
@@ -93,13 +90,7 @@ export const getTopArtists = asyncHandler(
 // @access  Public
 export const getArtistById = asyncHandler(
   async (req: Request, res: Response) => {
-    const rawId = req.params.id;
-    const id = parseInt(rawId, 10);
-
-    if (isNaN(id) || id <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid artist ID");
-    }
+    const id = validateId(req.params.id, "artist ID");
 
     const artistProfile = await prisma.artist.findUnique({
       where: { id },
@@ -134,22 +125,8 @@ export const getArtistById = asyncHandler(
 // @route   GET /api/artists/:id/top-songs
 // @access  Public
 export const getTopSong = asyncHandler(async (req: Request, res: Response) => {
-  const rawId = req.params.id;
-  const id = parseInt(rawId, 10);
-  const rawLimit = req.query.limit;
-  let limit = DEFAULT_LIMIT;
-
-  if (rawLimit && typeof rawLimit === "string") {
-    const parsedLimit = parseInt(rawLimit, 10);
-    if (!isNaN(parsedLimit) && parsedLimit > 0) {
-      limit = Math.min(parsedLimit, MAX_LIMIT);
-    }
-  }
-
-  if (isNaN(id) || id <= 0) {
-    res.status(StatusCodes.BAD_REQUEST);
-    throw new Error("Invalid artist ID");
-  }
+  const id = validateId(req.params.id, "artist ID");
+  const limit = validateLimit(req.query.limit as string | undefined);
 
   const artist = await prisma.artist.findUnique({
     where: { id },
@@ -187,29 +164,7 @@ export const createArtist = asyncHandler(
       throw new Error("Not authorized as admin");
     }
 
-    const { name, bio, dob, verificationStatus } = req.body;
-
-    if (!name || typeof name !== "string" || name.trim() === "") {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Name is required and must be a non-empty string");
-    }
-
-    let isVerified = false;
-    if (verificationStatus === "true" || verificationStatus === true) {
-      isVerified = true;
-    }
-
-    let parsedDob: Date | null = null;
-    if (dob && typeof dob === "string" && dob.trim() !== "") {
-      const date = new Date(dob);
-      if (isNaN(date.getTime())) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error(
-          "Invalid date format for dob. Use ISO format (YYYY-MM-DD)"
-        );
-      }
-      parsedDob = date;
-    }
+    const artistData = validateCreateArtist(req.body);
 
     let imageUrl: string | null = null;
 
@@ -234,11 +189,8 @@ export const createArtist = asyncHandler(
 
     const artist = await prisma.artist.create({
       data: {
-        name: name.trim(),
-        bio: bio?.trim() || null,
-        dob: parsedDob,
-        verificationStatus: isVerified,
-        image: imageUrl,
+        ...artistData,
+        image: imageUrl || artistData.image,
       },
     });
 
@@ -258,13 +210,7 @@ export const updateArtistInfo = asyncHandler(
       throw new Error("Not authorized as admin");
     }
 
-    const rawId = req.params.id;
-    const id = parseInt(rawId, 10);
-
-    if (isNaN(id) || id <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid artist ID");
-    }
+    const id = validateId(req.params.id, "artist ID");
 
     const existingArtist = await prisma.artist.findUnique({
       where: { id },
@@ -275,56 +221,7 @@ export const updateArtistInfo = asyncHandler(
       throw new Error("Artist not found");
     }
 
-    const { name, bio, dob, verificationStatus } = req.body;
-    const data: {
-      name?: string;
-      bio?: string | null;
-      dob?: Date | null;
-      verificationStatus?: boolean;
-      image?: string;
-    } = {};
-
-    if (name !== undefined) {
-      if (typeof name !== "string" || name.trim() === "") {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("Name must be a non-empty string");
-      }
-      data.name = name.trim();
-    }
-
-    if (bio !== undefined) {
-      data.bio =
-        bio && typeof bio === "string" && bio.trim() !== "" ? bio.trim() : null;
-    }
-
-    if (verificationStatus !== undefined) {
-      if (verificationStatus === "true" || verificationStatus === true) {
-        data.verificationStatus = true;
-      } else if (
-        verificationStatus === "false" ||
-        verificationStatus === false
-      ) {
-        data.verificationStatus = false;
-      } else {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("verificationStatus must be 'true' or 'false'");
-      }
-    }
-
-    if (dob !== undefined) {
-      if (dob && typeof dob === "string" && dob.trim() !== "") {
-        const date = new Date(dob);
-        if (isNaN(date.getTime())) {
-          res.status(StatusCodes.BAD_REQUEST);
-          throw new Error(
-            "Invalid date format for dob. Use ISO format (YYYY-MM-DD)"
-          );
-        }
-        data.dob = date;
-      } else {
-        data.dob = null;
-      }
-    }
+    const updateData = validateUpdateArtist(req.body);
 
     if (req.file) {
       try {
@@ -332,7 +229,7 @@ export const updateArtistInfo = asyncHandler(
           folder: "spotify-clone/artists",
           resource_type: "image",
         });
-        data.image = imageUrl;
+        updateData.image = imageUrl;
       } catch (error: any) {
         // Clean up temp file if it still exists
         if (fs.existsSync(req.file.path)) {
@@ -348,7 +245,7 @@ export const updateArtistInfo = asyncHandler(
 
     const updatedArtist = await prisma.artist.update({
       where: { id },
-      data,
+      data: updateData,
     });
 
     res.status(StatusCodes.OK).json({
@@ -366,13 +263,7 @@ export const deleteArtist = asyncHandler(
       throw new Error("Not authorized as admin");
     }
 
-    const rawId = req.params.id;
-    const id = parseInt(rawId, 10);
-
-    if (isNaN(id) || id <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid artist ID");
-    }
+    const id = validateId(req.params.id, "artist ID");
 
     const existingArtist = await prisma.artist.findUnique({
       where: { id },

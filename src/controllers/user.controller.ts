@@ -4,57 +4,21 @@ import { StatusCodes } from "http-status-codes";
 import prisma from "../config/db";
 import { generateToken } from "../config/jwt";
 import bcrypt from "bcryptjs";
-
-interface RegisterBody {
-  email: string;
-  password: string;
-  username?: string;
-  fullName?: string;
-  isAdmin?: boolean;
-  address?: string;
-}
-
-interface LoginBody {
-  email: string;
-  password: string;
-}
-
-function validateBody(req: Request, res: Response) {
-  const { email, password } = req.body;
-
-  if (!email || email.trim() === "" || !password || password.trim() === "") {
-    res.status(StatusCodes.BAD_REQUEST);
-    throw new Error("Email and password are required");
-  }
-  if (email.trim().length < 6) {
-    res.status(StatusCodes.BAD_REQUEST);
-    throw new Error("Email length needs to be 6 characters or more");
-  }
-  if (!email.includes("@")) {
-    res.status(StatusCodes.BAD_REQUEST);
-    throw new Error("Invalid email format");
-  }
-  return;
-}
-
-function validateUserLoginBody(req: Request, res: Response) {
-  const { email, password } = req.body;
-
-  if (!email || email.trim() === "" || !password || password.trim() === "") {
-    res.status(StatusCodes.BAD_REQUEST);
-    throw new Error("Email and password are required");
-  }
-  return;
-}
+import {
+  validateRegisterUser,
+  validateLoginUser,
+  validateUpdateUserProfile,
+  RegisterUserDto,
+  LoginUserDto,
+} from "../dto/user.dto";
 
 // @desc    Register a new user. Requires email (min 6 chars, must contain @) and password. Optional fields: username, fullName, address, isAdmin (defaults to false). Returns user info and JWT token.
 // @route   POST /api/users/register
 // @access  Public
 export const registerUser = asyncHandler(
-  async (req: Request<{}, {}, RegisterBody>, res: Response) => {
-    validateBody(req, res);
-
-    const { email, password, username, fullName, isAdmin, address } = req.body;
+  async (req: Request<{}, {}, RegisterUserDto>, res: Response) => {
+    const userData = validateRegisterUser(req.body);
+    const { email, password, username, fullName, isAdmin, address } = userData;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
@@ -77,7 +41,6 @@ export const registerUser = asyncHandler(
 
     const token = generateToken(user.id);
     res.status(StatusCodes.CREATED).json({
-      id: user.id,
       email: user.email,
       username: user.username,
       fullName: user.fullName,
@@ -91,10 +54,8 @@ export const registerUser = asyncHandler(
 // @route   POST /api/users/login
 // @access  Public
 export const loginUser = asyncHandler(
-  async (req: Request<{}, {}, LoginBody>, res: Response) => {
-    validateUserLoginBody(req, res);
-
-    const { email, password } = req.body;
+  async (req: Request<{}, {}, LoginUserDto>, res: Response) => {
+    const { email, password } = validateLoginUser(req.body);
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (!existingUser) {
       res.status(StatusCodes.UNAUTHORIZED);
@@ -160,29 +121,16 @@ export const updateUserProfile = asyncHandler(
       throw new Error("User not authenticated");
     }
 
-    const { fullName, username, address, phoneNumber, password } = req.body;
-    const updateData: Partial<{
-      fullName: string;
-      username: string;
-      address: string;
-      phoneNumber: string;
-      password: string;
-      profilePicture: string;
-    }> = {};
-
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updateData.password = hashedPassword;
-    }
-
-    if (fullName !== undefined) updateData.fullName = fullName;
-    if (username !== undefined) updateData.username = username;
-    if (address !== undefined) updateData.address = address;
-    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+    const updateData = validateUpdateUserProfile(req.body);
 
     if (Object.keys(updateData).length === 0) {
       res.status(StatusCodes.BAD_REQUEST);
       throw new Error("No fields provided to update");
+    }
+
+    // Hash password if provided
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
     const updatedUser = await prisma.user.update({

@@ -5,9 +5,12 @@ import prisma from "../config/db";
 import { Prisma } from "@prisma/client";
 import { uploadToCloudinary } from "../config/cloudinary";
 import fs from "fs";
-
-const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 100;
+import {
+  validateLimit,
+  validateSearch,
+  validateArtistId,
+  validateId,
+} from "../dto/query.dto";
 
 // @desc    Get all albums with optional search, artistId, and genre filters. Returns albums ordered by release date with song counts.
 // @route   GET /api/albums
@@ -15,20 +18,17 @@ const MAX_LIMIT = 100;
 
 export const getAllAlbums = asyncHandler(
   async (req: Request, res: Response) => {
-    const search = req.query.search;
-    const rawArtistId = req.query.artistId;
+    const search = validateSearch(req.query.search as string | undefined);
+    const artistId = validateArtistId(req.query.artistId as string | undefined);
 
     const where: Prisma.AlbumWhereInput = {};
 
-    if (search && typeof search === "string" && search.trim() !== "") {
+    if (search) {
       where.title = { contains: search, mode: "insensitive" };
     }
 
-    if (rawArtistId && typeof rawArtistId === "string") {
-      const id = parseInt(rawArtistId, 10);
-      if (!isNaN(id) && id > 0) {
-        where.artistId = id;
-      }
+    if (artistId) {
+      where.artistId = artistId;
     }
 
     const albums = await prisma.album.findMany({
@@ -64,15 +64,7 @@ export const getAllAlbums = asyncHandler(
 
 export const getNewReleasedAlbums = asyncHandler(
   async (req: Request, res: Response) => {
-    const rawLimit = req.query.limit;
-    let limit = DEFAULT_LIMIT;
-
-    if (rawLimit && typeof rawLimit === "string") {
-      const parsedLimit = parseInt(rawLimit, 10);
-      if (!isNaN(parsedLimit) && parsedLimit > 0) {
-        limit = Math.min(parsedLimit, MAX_LIMIT);
-      }
-    }
+    const limit = validateLimit(req.query.limit as string | undefined);
 
     const albums = await prisma.album.findMany({
       take: limit,
@@ -114,13 +106,7 @@ export const getNewReleasedAlbums = asyncHandler(
 
 export const getAlbumById = asyncHandler(
   async (req: Request, res: Response) => {
-    const rawAlbumId = req.params.id;
-    const id = parseInt(rawAlbumId, 10);
-
-    if (isNaN(id) || id <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid album id");
-    }
+    const id = validateId(req.params.id, "album id");
     const album = await prisma.album.findUnique({
       where: { id },
       include: {
@@ -332,13 +318,7 @@ export const updateAlbumInfo = asyncHandler(
       res.status(StatusCodes.FORBIDDEN);
       throw new Error("Not authorized as admin");
     }
-    const rawId = req.params.id;
-    const albumId = parseInt(rawId, 10);
-
-    if (isNaN(albumId) || albumId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid album id");
-    }
+    const albumId = validateId(req.params.id, "album id");
 
     const existingAlbum = await prisma.album.findUnique({
       where: { id: albumId },
@@ -507,13 +487,7 @@ export const updateAlbumInfo = asyncHandler(
 
 export const deleteAlbumById = asyncHandler(
   async (req: Request, res: Response) => {
-    const rawId = req.params.id;
-    const albumId = parseInt(rawId, 10);
-
-    if (isNaN(albumId) || albumId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid album id");
-    }
+    const albumId = validateId(req.params.id, "album id");
     const existingAlbum = await prisma.album.findUnique({
       where: { id: albumId },
     });
@@ -539,13 +513,7 @@ export const addSongsToalbum = asyncHandler(
       res.status(StatusCodes.FORBIDDEN);
       throw new Error("Not authorized as admin");
     }
-    const rawId = req.params.id;
-    const albumId = parseInt(rawId, 10);
-
-    if (isNaN(albumId) || albumId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid album id");
-    }
+    const albumId = validateId(req.params.id, "album id");
 
     const existingAlbum = await prisma.album.findUnique({
       where: { id: albumId },
@@ -655,13 +623,7 @@ export const removeSongFromAlbum = asyncHandler(
       res.status(StatusCodes.FORBIDDEN);
       throw new Error("Not authorized as admin");
     }
-    const rawId = req.params.id;
-    const albumId = parseInt(rawId, 10);
-
-    if (isNaN(albumId) || albumId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid album id");
-    }
+    const albumId = validateId(req.params.id, "album id");
 
     const existingAlbum = await prisma.album.findUnique({
       where: { id: albumId },
@@ -671,13 +633,7 @@ export const removeSongFromAlbum = asyncHandler(
       res.status(StatusCodes.BAD_REQUEST);
       throw new Error("Album does not exist");
     }
-    const rawSongId = req.params.songId;
-    const songId = parseInt(rawSongId, 10);
-
-    if (isNaN(songId) || songId <= 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      throw new Error("Invalid song id");
-    }
+    const songId = validateId(req.params.songId, "song id");
 
     const existingSong = await prisma.song.findUnique({
       where: { id: songId },

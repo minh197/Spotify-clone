@@ -5,35 +5,34 @@ import prisma from "../config/db";
 import { Prisma } from "@prisma/client";
 import { uploadToCloudinary } from "../config/cloudinary";
 import fs from "fs";
-
-// Constants for pagination limits
-const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 100;
+import {
+  validateLimit,
+  validateSearch,
+  validateGenre,
+  validateArtistId,
+} from "../dto/query.dto";
 
 // @desc    Get all songs with optional search, genre, and artistId; return an array of songs
 // @route   GET /api/songs
 // @access  Public
 
 export const getAllSongs = asyncHandler(async (req: Request, res: Response) => {
-  const search = req.query.search;
-  const genre = req.query.genre;
-  const rawArtistId = req.query.artistId;
+  const search = validateSearch(req.query.search as string | undefined);
+  const genre = validateGenre(req.query.genre as string | undefined);
+  const artistId = validateArtistId(req.query.artistId as string | undefined);
 
   const where: Prisma.SongWhereInput = {};
 
-  if (search && typeof search === "string" && search.trim() !== "") {
+  if (search) {
     where.title = { contains: search, mode: "insensitive" };
   }
 
-  if (genre && typeof genre === "string" && genre.trim() !== "") {
+  if (genre) {
     where.genre = genre;
   }
 
-  if (rawArtistId && typeof rawArtistId === "string") {
-    const id = parseInt(rawArtistId, 10);
-    if (!isNaN(id) && id > 0) {
-      where.artistId = id;
-    }
+  if (artistId) {
+    where.artistId = artistId;
   }
 
   const songs = await prisma.song.findMany({
@@ -69,15 +68,7 @@ export const getAllSongs = asyncHandler(async (req: Request, res: Response) => {
 // @access  Public
 
 export const getTopSongs = asyncHandler(async (req: Request, res: Response) => {
-  const rawLimit = req.query.limit;
-  let limit = DEFAULT_LIMIT;
-
-  if (rawLimit && typeof rawLimit === "string") {
-    const parsedLimit = parseInt(rawLimit, 10);
-    if (!isNaN(parsedLimit) && parsedLimit > 0) {
-      limit = Math.min(parsedLimit, MAX_LIMIT);
-    }
-  }
+  const limit = validateLimit(req.query.limit as string | undefined);
   const songs = await prisma.song.findMany({
     take: limit,
     orderBy: {
@@ -114,15 +105,7 @@ export const getTopSongs = asyncHandler(async (req: Request, res: Response) => {
 
 export const getNewReleasedSongs = asyncHandler(
   async (req: Request, res: Response) => {
-    const rawLimit = req.query.limit;
-    let limit = DEFAULT_LIMIT;
-
-    if (rawLimit && typeof rawLimit === "string") {
-      const parsedLimit = parseInt(rawLimit, 10);
-      if (!isNaN(parsedLimit) && parsedLimit > 0) {
-        limit = Math.min(parsedLimit, MAX_LIMIT);
-      }
-    }
+    const limit = validateLimit(req.query.limit as string | undefined);
     const songs = await prisma.song.findMany({
       take: limit,
       orderBy: {
@@ -204,10 +187,6 @@ export const getSongById = asyncHandler(async (req: Request, res: Response) => {
 
 export const createNewSong = asyncHandler(
   async (req: Request, res: Response) => {
-    if (!req.user?.isAdmin) {
-      res.status(StatusCodes.FORBIDDEN);
-      throw new Error("Not authorized as admin");
-    }
     const {
       artistId,
       title,
