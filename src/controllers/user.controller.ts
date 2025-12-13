@@ -11,6 +11,7 @@ import {
   RegisterUserDto,
   LoginUserDto,
 } from "../dto/user.dto";
+import { validateLimit, validatePage, calculateSkip } from "../dto/query.dto";
 
 // @desc    Register a new user. Requires email (min 6 chars, must contain @) and password. Optional fields: username, fullName, address, isAdmin (defaults to false). Returns user info and JWT token.
 // @route   POST /api/users/register
@@ -156,28 +157,52 @@ export const updateUserProfile = asyncHandler(
   }
 );
 
-// @desc    Get all users (Admin only). Returns list of all users with their info excluding passwords. Includes user count.
-// @route   GET /api/users
+// @desc    Get all users (Admin only). Returns paginated list of all users with their info excluding passwords.
+// @route   GET /api/users?page=1&limit=10
 // @access  Private/Admin
-export const getAllUsers = asyncHandler(
-  async (_req: Request, res: Response) => {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        fullName: true,
-        phoneNumber: true,
-        address: true,
-        profilePicture: true,
-        isAdmin: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-    res.status(StatusCodes.OK).json({
-      count: users.length,
-      users,
-    });
-  }
-);
+export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
+  const page = validatePage(req.query.page as string | undefined);
+  const limit = validateLimit(req.query.limit as string | undefined);
+  const skip = calculateSkip(page, limit);
+
+  // Get total count for pagination metadata
+  const totalCount = await prisma.user.count();
+
+  // Get paginated users
+  const users = await prisma.user.findMany({
+    skip,
+    take: limit,
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      fullName: true,
+      phoneNumber: true,
+      address: true,
+      profilePicture: true,
+      isAdmin: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  const totalPages = Math.ceil(totalCount / limit);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
+
+  res.status(StatusCodes.OK).json({
+    pagination: {
+      currentPage: page,
+      limit,
+      totalCount,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
+    },
+    count: users.length,
+    users,
+  });
+});

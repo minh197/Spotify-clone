@@ -4,6 +4,7 @@ export const MAX_LIMIT = 100;
 
 export interface PaginationQueryDto {
   limit?: number;
+  page?: number;
 }
 
 export interface SearchQueryDto {
@@ -120,6 +121,38 @@ export const validateVerified = (
     return false;
   }
   return undefined;
+};
+
+/**
+ * Validates and transforms page query parameter
+ * @param rawPage - The raw page value from query string
+ * @param defaultPage - Default page if not provided or invalid (default: 1)
+ * @returns Validated page number (1-based)
+ */
+export const validatePage = (
+  rawPage: string | undefined,
+  defaultPage: number = 1
+): number => {
+  if (!rawPage || typeof rawPage !== "string") {
+    return defaultPage;
+  }
+
+  const parsedPage = parseInt(rawPage, 10);
+  if (isNaN(parsedPage) || parsedPage < 1) {
+    return defaultPage;
+  }
+
+  return parsedPage;
+};
+
+/**
+ * Calculates skip value for pagination
+ * @param page - Current page number (1-based)
+ * @param limit - Number of items per page
+ * @returns Skip value for Prisma queries
+ */
+export const calculateSkip = (page: number, limit: number): number => {
+  return (page - 1) * limit;
 };
 
 /**
