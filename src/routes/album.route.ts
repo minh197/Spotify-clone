@@ -9,7 +9,7 @@ import {
   addSongsToalbum,
   removeSongFromAlbum,
 } from "../controllers/album.controller";
-import { protect, admin } from "../middleware/auth.middleware";
+import { isAuthenticated, isAdminRole } from "../middleware/auth.middleware";
 import { upload } from "../middleware/upload.middleware";
 
 const router = Router();
@@ -20,16 +20,27 @@ router.get("/new-releases", getNewReleasedAlbums);
 router.get("/:id", getAlbumById);
 
 // Admin routes (require authentication + admin role)
-router.post("/", protect, admin, upload.single("coverImage"), createNewAlbum);
+router.post(
+  "/",
+  isAuthenticated,
+  isAdminRole,
+  upload.single("coverImage"),
+  createNewAlbum
+);
 router.put(
   "/:id",
-  protect,
-  admin,
+  isAuthenticated,
+  isAdminRole,
   upload.single("coverImage"),
   updateAlbumInfo
 );
-router.delete("/:id", protect, admin, deleteAlbumById);
-router.put("/:id/add-songs", protect, admin, addSongsToalbum);
-router.put("/:id/remove-song/:songId", protect, admin, removeSongFromAlbum);
+router.delete("/:id", isAuthenticated, isAdminRole, deleteAlbumById);
+router.put("/:id/add-songs", isAuthenticated, isAdminRole, addSongsToalbum);
+router.put(
+  "/:id/remove-song/:songId",
+  isAuthenticated,
+  isAdminRole,
+  removeSongFromAlbum
+);
 
 export default router;

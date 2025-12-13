@@ -4,7 +4,7 @@ import asyncHandler from "express-async-handler";
 import { verifyToken } from "./config/jwt";
 import prisma from "../config/db";
 
-export const protect = asyncHandler(
+export const isAuthenticated = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     // 1. Read Authorization header
     const authHeader = req.headers.authorization;
@@ -52,7 +52,11 @@ export const protect = asyncHandler(
   }
 );
 
-export const admin = (req: Request, res: Response, next: NextFunction) => {
+export const isAdminRole = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // 1. Check req.user exists
   if (!req.user) {
     res.status(StatusCodes.UNAUTHORIZED);

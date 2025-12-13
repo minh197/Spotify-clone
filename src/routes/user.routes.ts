@@ -6,7 +6,7 @@ import {
   updateUserProfile,
   getAllUsers,
 } from "../controllers/user.controller";
-import { protect, admin } from "../middleware/auth.middleware";
+import { isAuthenticated, isAdminRole } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -15,11 +15,10 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 
 // Protected routes (require authentication)
-router.get("/profile", protect, getUserProfile);
-router.put("/profile", protect, updateUserProfile);
+router.get("/profile", isAuthenticated, getUserProfile);
+router.put("/profile", isAuthenticated, updateUserProfile);
 
 // Admin routes (require authentication + admin role)
-router.get("/", protect, admin, getAllUsers);
+router.get("/", isAuthenticated, isAdminRole, getAllUsers);
 
 export default router;
-
